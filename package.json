@@ -1,0 +1,51 @@
+{
+  "name": "omni-doc-mcp",
+  "version": "1.0.0",
+  "description": "Omni-Doc-MCP: Zero-dependency universal document parser MCP server for AI agents. No Java, no Python, no native C++ builds.",
+  "keywords": [
+    "mcp",
+    "pdf",
+    "docx",
+    "xlsx",
+    "document-parser",
+    "markdown",
+    "ai-agent",
+    "tika-alternative"
+  ],
+  "license": "MIT",
+  "author": "Omni-Doc-MCP Contributors",
+  "type": "module",
+  "main": "dist/src/doc_parsers/index.js",
+  "types": "dist/src/doc_parsers/index.d.ts",
+  "bin": {
+    "omni-doc": "bin/omni-doc.js"
+  },
+  "files": [
+    "bin",
+    "dist/src",
+    "demo",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "cli": "node bin/omni-doc.js",
+    "gen-fixtures": "node dist/tests/generate-fixtures.js",
+    "mcp": "node dist/src/mcp_server/server.js",
+    "demo": "node bin/omni-doc.js --serve",
+    "test": "npm run build && node dist/tests/generate-fixtures.js && node --test dist/tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "mammoth": "^1.8.0",
+    "pdfjs-dist": "^4.8.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3"
+  }
+}

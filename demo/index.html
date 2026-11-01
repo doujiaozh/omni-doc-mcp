@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Omni-Doc-MCP · 万能文档解析演示</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #171e2e;
+    --panel-2: #1d2638;
+    --border: #2b3650;
+    --text: #e6eaf2;
+    --muted: #93a0b8;
+    --accent: #4f8cff;
+    --accent-2: #7c5cff;
+    --ok: #34d399;
+    --err: #f87171;
+    --code-bg: #101828;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 600px at 20% -10%, #1b2a4a 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 64px;
+  }
+  header { text-align: center; margin-bottom: 24px; }
+  h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: .5px; }
+  h1 .accent { color: var(--accent); }
+  .tagline { color: var(--muted); font-size: 14px; line-height: 1.7; }
+  .badge {
+    display: inline-block; margin-top: 10px; padding: 3px 10px; font-size: 12px;
+    color: #081018; font-weight: 600; border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  }
+  .dropzone {
+    width: min(760px, 100%);
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    background: var(--panel);
+    padding: 46px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, transform .15s ease;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--panel-2); transform: translateY(-1px); }
+  .dropzone .icon { font-size: 40px; margin-bottom: 10px; }
+  .dropzone .main { font-size: 16px; font-weight: 600; }
+  .dropzone .sub { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.6; }
+  .dropzone input { display: none; }
+  .status {
+    width: min(760px, 100%); margin-top: 14px; min-height: 22px;
+    font-size: 13px; color: var(--muted); text-align: center;
+  }
+  .status.error { color: var(--err); }
+  .status.ok { color: var(--ok); }
+  .result { width: min(960px, 100%); margin-top: 8px; display: none; }
+  .result.show { display: block; }
+  .toolbar { display: flex; align-items: center; gap: 8px; margin: 18px 0 10px; flex-wrap: wrap; }
+  .tab {
+    padding: 6px 14px; border-radius: 8px; background: var(--panel);
+    border: 1px solid var(--border); color: var(--muted); cursor: pointer; font-size: 13px;
+  }
+  .tab.active { color: #fff; border-color: var(--accent); background: var(--panel-2); }
+  .meta { font-size: 12px; color: var(--muted); margin-left: auto; }
+  .preview, .raw {
+    border: 1px solid var(--border); border-radius: 12px; background: var(--panel);
+    padding: 24px 28px; overflow: auto; max-height: 70vh;
+    font-size: 15px; line-height: 1.75;
+  }
+  .preview h1 { font-size: 24px; margin: 18px 0 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  .preview h2 { font-size: 19px; margin: 16px 0 8px; color: #cfe0ff; }
+  .preview h3 { font-size: 16px; margin: 14px 0 6px; }
+  .preview p { margin: 8px 0; }
+  .preview table { border-collapse: collapse; margin: 12px 0; width: 100%; font-size: 13.5px; }
+  .preview th, .preview td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+  .preview th { background: var(--panel-2); color: #cfe0ff; }
+  .preview tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+  .preview code { background: var(--code-bg); padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+  .preview pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; overflow: auto; }
+  .preview pre code { background: none; padding: 0; }
+  .preview blockquote { border-left: 3px solid var(--accent); margin: 10px 0; padding: 2px 14px; color: var(--muted); }
+  .preview ul, .preview ol { padding-left: 24px; margin: 8px 0; }
+  .preview a { color: var(--accent); }
+  .preview img { max-width: 100%; border-radius: 8px; }
+  footer { margin-top: 26px; color: var(--muted); font-size: 12px; text-align: center; line-height: 1.8; }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; margin-right: 8px;
+    border: 2px solid var(--muted); border-top-color: var(--accent); border-radius: 50%;
+    animation: spin .7s linear infinite; vertical-align: -2px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Omni-<span class="accent">Doc</span>-MCP</h1>
+    <div class="tagline">无需 Java，无需 Python，让 AI 在你的浏览器里直接读懂万物。<br />
+    Zero Java. Zero Python. Pure Node.js document parsing for AI agents.</div>
+    <span class="badge">PDF · DOCX · XLSX · XLS · CSV → Markdown</span>
+  </header>
+
+  <div class="dropzone" id="dropzone" role="button" tabindex="0">
+    <div class="icon;">⬆</div>
+    <div class="main">拖拽文档到此处，或点击选择文件</div>
+    <div class="sub">Drop a document here, or click to choose one. Parsing happens locally via the Omni-Doc-MCP engine.</div>
+    <input type="file" id="fileInput" accept=".pdf,.docx,.xlsx,.xls,.csv" />
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="result" id="result">
+    <div class="toolbar">
+      <div class="tab active" id="tabPreview">预览 Preview</div>
+      <div class="tab" id="tabRaw">Markdown 源码</div>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="preview" id="preview"></div>
+    <div class="raw" id="raw"></div>
+  </div>
+
+  <footer>
+    Omni-Doc-MCP demo · 提交后文件仅在本地内存中解析，不落盘、不上传到任何远端服务器。<br />
+    Powered by pdfjs-dist · mammoth · SheetJS — 100% pure JavaScript.
+  </footer>
+
+<script>
+"use strict";
+
+const $ = (id) => document.getElementById(id);
+const dropzone = $("dropzone");
+const fileInput = $("fileInput");
+const status = $("status");
+const result = $("result");
+const preview = $("preview");
+const raw = $("raw");
+const meta = $("meta");
+const tabPreview = $("tabPreview");
+const tabRaw = $("tabRaw");
+
+function setStatus(text, kind) {
+  status.className = "status" + (kind ? " " + kind : "");
+  status.innerHTML = text;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function inlineMarkdown(s) {
+  let out = escapeHtml(s);
+  out = out.replace(/`([^`]+)`/g, "<code>$1</code>");
+  out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  out = out.replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
+  out = out.replace(/~~([^~]+)~~/g, "<s>$1</s>");
+  out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+  return out;
+}
+
+function renderTable(rows) {
+  const cells = rows.map((r) => r.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map((c) => c.trim()));
+  const hasSeparator = cells.length > 1 && cells[1].every((c) => /^:?-+:?$/.test(c));
+  const header = cells[0] || [];
+  const body = hasSeparator ? cells.slice(2) : cells.slice(1);
+  const normalize = (c) => inlineMarkdown(c.replace(/\\\|/g, "|"));
+  let html = "<table><thead><tr>" + header.map((c) => "<th>" + normalize(c) + "</th>").join("") + "</tr></thead><tbody>";
+  for (const row of body) html += "<tr>" + row.map((c) => "<td>" + normalize(c) + "</td>").join("") + "</tr>";
+  return html + "</tbody></table>";
+}
+
+function renderMarkdown(md) {
+  const lines = md.split("\n");
+  const html = [];
+  let list = null;
+  let listItems = [];
+  let tableRows = [];
+  let inCode = false;
+  let paragraph = [];
+
+  const flushList = () => {
+    if (list) {
+      html.push("<" + list + ">" + listItems.map((t) => "<li>" + inlineMarkdown(t) + "</li>").join("") + "</" + list + ">");
+      list = null; listItems = [];
+    }
+  };
+  const flushTable = () => {
+    if (tableRows.length) { html.push(renderTable(tableRows)); tableRows = []; }
+  };
+  const flushParagraph = () => {
+    if (paragraph.length) { html.push("<p>" + inlineMarkdown(paragraph.join(" ")) + "</p>"); paragraph = []; }
+  };
+
+  for (const line of lines) {
+    if (line.trim().startsWith("```")) {
+      if (!inCode) { flushList(); flushTable(); flushParagraph(); html.push("<pre><code>"); inCode = true; }
+      else { html.push("</code></pre>"); inCode = false; }
+      continue;
+    }
+    if (inCode) { html.push(escapeHtml(line)); continue; }
+
+    if (/^\s*\|/.test(line)) { flushList(); flushParagraph(); tableRows.push(line); continue; }
+    flushTable();
+
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) { flushList(); flushParagraph(); const level = heading[1].length; html.push("<h" + level + ">" + inlineMarkdown(heading[2]) + "</h" + level + ">"); continue; }
+    if (/^\s*-{3,}\s*$/.test(line)) { flushList(); flushParagraph(); html.push("<hr>"); continue; }
+    const quote = line.match(/^>\s?(.*)$/);
+    if (quote) { flushList(); flushParagraph(); html.push("<blockquote>" + inlineMarkdown(quote[1]) + "</blockquote>"); continue; }
+    const bullet = line.match(/^\s*[-*]\s+(.*)$/);
+    if (bullet) { flushParagraph(); list = "ul"; listItems.push(bullet[1]); continue; }
+    const ordered = line.match(/^\s*\d+\.\s+(.*)$/);
+    if (ordered) { flushParagraph(); list = "ol"; listItems.push(ordered[1]); continue; }
+    if (line.trim() === "") { flushList(); flushParagraph(); continue; }
+    flushList();
+    paragraph.push(line.trim());
+  }
+  flushList(); flushTable(); flushParagraph();
+  if (inCode) html.push("</code></pre>");
+  return html.join("\n");
+}
+
+function describeResult(m) {
+  const parts = [];
+  if (typeof m.numPages === "number") parts.push(m.numPages + " pages");
+  if (typeof m.sheetCount === "number") parts.push(m.sheetCount + " sheets");
+  if (typeof m.htmlLength === "number") parts.push(m.htmlLength + " chars of HTML");
+  return parts.join(" · ");
+}
+
+async function parseFile(file) {
+  const allowed = /\.(pdf|docx|xlsx|xls|csv)$/i;
+  if (!allowed.test(file.name)) {
+    setStatus("不支持的格式 / Unsupported format: only PDF, DOCX, XLSX, XLS, CSV are supported.", "error");
+    return;
+  }
+  setStatus('<span class="spinner"></span>正在解析 "' + escapeHtml(file.name) + '" … Parsing…');
+  result.classList.remove("show");
+  try {
+    const buffer = await file.arrayBuffer();
+    const response = await fetch("/parse", {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream", "X-Filename": encodeURIComponent(file.name) },
+      body: buffer,
+    });
+    const payload = await response.json();
+    if (!payload.ok) throw new Error(payload.error || "unknown parse failure");
+    const r = payload.result;
+    preview.innerHTML = renderMarkdown(r.markdown || "");
+    raw.textContent = r.markdown || "";
+    meta.textContent = [file.name, r.format, describeResult(r.meta || {})].filter(Boolean).join(" · ");
+    result.classList.add("show");
+    const kb = (file.size / 1024).toFixed(1);
+    setStatus('✓ 解析完成 / Parsed "' + escapeHtml(file.name) + '" (' + kb + ' KB) to ' + (r.markdown || "").length + " chars of Markdown", "ok");
+  } catch (error) {
+    setStatus("✗ " + (error && error.message ? error.message : String(error)), "error");
+  }
+}
+
+dropzone.addEventListener("click", () => fileInput.click());
+dropzone.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); } });
+dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("drag"); });
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag"));
+dropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropzone.classList.remove("drag");
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) parseFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => { if (fileInput.files && fileInput.files[0]) parseFile(fileInput.files[0]); });
+
+tabPreview.addEventListener("click", () => {
+  tabPreview.classList.add("active"); tabRaw.classList.remove("active");
+  preview.style.display = "block"; raw.style.display = "none";
+});
+tabRaw.addEventListener("click", () => {
+  tabRaw.classList.add("active"); tabPreview.classList.remove("active");
+  preview.style.display = "none"; raw.style.display = "block";
+});
+
+fetch("/health").then((r) => r.json()).then(() => {
+  setStatus("就绪 / Ready — drop a PDF, DOCX or XLSX file above to begin.");
+}).catch(() => {
+  setStatus("提示：演示服务未运行。请先执行 / Demo server not running — start it with: npm run demo", "error");
+});
+</script>
+</body>
+</html>
